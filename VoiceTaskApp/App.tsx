@@ -5,7 +5,18 @@ import { StatusBar } from 'expo-status-bar';
 import { initDB } from './src/services/db';
 import { requestPermissions } from './src/services/notificationService';
 import { tryAutoLoad } from './src/services/whisperService';
+import { useDraftRetry } from './src/utils/useDraftRetry';
 import TabNavigator from './src/navigation/TabNavigator';
+
+function AppRoot() {
+  useDraftRetry();
+  return (
+    <NavigationContainer>
+      <StatusBar style="light" />
+      <TabNavigator />
+    </NavigationContainer>
+  );
+}
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -33,12 +44,7 @@ export default function App() {
     );
   }
 
-  return (
-    <NavigationContainer>
-      <StatusBar style="light" />
-      <TabNavigator />
-    </NavigationContainer>
-  );
+  return <AppRoot />;
 }
 
 const styles = StyleSheet.create({

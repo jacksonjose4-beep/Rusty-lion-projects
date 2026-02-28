@@ -1,24 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useDraftsStore } from '../store/useDraftsStore';
+import DraftReviewModal from './DraftReviewModal';
 
-interface Props {
-  onPress?: () => void;
-}
-
-export default function DraftBanner({ onPress }: Props) {
+export default function DraftBanner() {
   const draftCount = useDraftsStore((s) => s.draftCount);
+  const [showModal, setShowModal] = useState(false);
 
   if (draftCount === 0) return null;
 
   return (
-    <TouchableOpacity style={styles.banner} onPress={onPress} activeOpacity={0.8}>
-      <View style={styles.dot} />
-      <Text style={styles.text}>
-        {draftCount} voice {draftCount === 1 ? 'note' : 'notes'} waiting to parse
-      </Text>
-      <Text style={styles.arrow}>›</Text>
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        style={styles.banner}
+        onPress={() => setShowModal(true)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.dot} />
+        <Text style={styles.text}>
+          {draftCount} {draftCount === 1 ? 'note' : 'notes'} waiting to parse
+        </Text>
+        <Text style={styles.arrow}>›</Text>
+      </TouchableOpacity>
+
+      <DraftReviewModal visible={showModal} onClose={() => setShowModal(false)} />
+    </>
   );
 }
 
