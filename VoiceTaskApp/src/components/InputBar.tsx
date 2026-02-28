@@ -7,35 +7,40 @@ import {
   StyleSheet,
   Keyboard,
   Platform,
+  Alert,
 } from 'react-native';
 import { useTodosStore } from '../store/useTodosStore';
 import { useThoughtsStore } from '../store/useThoughtsStore';
 import ReminderModal from './ReminderModal';
+import VoiceRecorder from './VoiceRecorder';
 
 type Category = 'todo' | 'reminder' | 'thought';
+type InputMode = 'text' | 'voice';
 
 interface Props {
   /** Pre-select a category and hide the selector (used per-screen) */
   defaultCategory?: Category;
-  /** Called after an item is created (optional hook for parent) */
+  /** Called after an item is created */
   onCreated?: () => void;
 }
 
 const CATEGORIES: { key: Category; label: string; icon: string }[] = [
-  { key: 'todo', label: 'Todo', icon: '✓' },
-  { key: 'reminder', label: 'Remind', icon: '🔔' },
-  { key: 'thought', label: 'Thought', icon: '💭' },
+  { key: 'todo',     label: 'Todo',    icon: '✓'  },
+  { key: 'reminder', label: 'Remind',  icon: '🔔' },
+  { key: 'thought',  label: 'Thought', icon: '💭' },
 ];
 
 export default function InputBar({ defaultCategory, onCreated }: Props) {
   const [text, setText] = useState('');
   const [category, setCategory] = useState<Category>(defaultCategory ?? 'todo');
+  const [inputMode, setInputMode] = useState<InputMode>('text');
   const [showReminderModal, setShowReminderModal] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const addTodo = useTodosStore((s) => s.addTodo);
   const addThought = useThoughtsStore((s) => s.addThought);
 
+  // ── Submit (text mode) ─────────────────────────────────────────────────────
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -56,12 +61,29 @@ export default function InputBar({ defaultCategory, onCreated }: Props) {
     onCreated?.();
   };
 
+  // ── Voice transcript received ──────────────────────────────────────────────
+  const handleTranscript = (transcript: string) => {
+    if (!transcript.trim()) return;
+    // Switch back to text mode so the user can review / edit the transcript
+    setInputMode('text');
+    setText(transcript);
+    // Small delay so the TextInput is rendered before we focus it
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleVoiceError = (msg: string) => {
+    setInputMode('text');
+    Alert.alert('Voice error', msg);
+  };
+
+  // ── Reminder modal ─────────────────────────────────────────────────────────
   const handleReminderScheduled = () => {
     setShowReminderModal(false);
     setText('');
     onCreated?.();
   };
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
   const placeholder =
     category === 'todo'
       ? 'Add a task for today…'
@@ -69,10 +91,15 @@ export default function InputBar({ defaultCategory, onCreated }: Props) {
       ? 'What do you want to be reminded of?'
       : 'Capture a thought…';
 
+  const toggleMode = () => {
+    setInputMode((m) => (m === 'text' ? 'voice' : 'text'));
+    Keyboard.dismiss();
+  };
+
   return (
     <>
       <View style={styles.container}>
-        {/* Category chips — hidden when defaultCategory is fixed */}
+        {/* Category chips — hidden when defaultCategory is locked */}
         {!defaultCategory && (
           <View style={styles.chips}>
             {CATEGORIES.map(({ key, label, icon }) => (
@@ -90,32 +117,45 @@ export default function InputBar({ defaultCategory, onCreated }: Props) {
           </View>
         )}
 
-        {/* Input row */}
-        <View style={styles.row}>
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            value={text}
-            onChangeText={setText}
-            placeholder={placeholder}
-            placeholderTextColor="#475569"
-            multiline
-            returnKeyType="send"
-            onSubmitEditing={handleSend}
-            blurOnSubmit={false}
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
-            onPress={handleSend}
-            disabled={!text.trim()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.sendIcon}>↑</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Voice recorder — shown when in voice mode */}
+        {inputMode === 'voice' && (
+          <VoiceRecorder onTranscript={handleTranscript} onError={handleVoiceError} />
+        )}
+
+        {/* Text input row — shown when in text mode */}
+        {inputMode === 'text' && (
+          <View style={styles.row}>
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              value={text}
+              onChangeText={setText}
+              placeholder={placeholder}
+              placeholderTextColor="#475569"
+              multiline
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
+              blurOnSubmit={false}
+            />
+            <TouchableOpacity
+              style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
+              onPress={handleSend}
+              disabled={!text.trim()}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sendIcon}>↑</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Mode toggle — always visible */}
+        <TouchableOpacity style={styles.modeToggle} onPress={toggleMode} activeOpacity={0.7}>
+          <Text style={styles.modeToggleText}>
+            {inputMode === 'text' ? '🎤 Use voice' : '⌨️ Use keyboard'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Reminder date/time modal */}
       <ReminderModal
         visible={showReminderModal}
         text={text}
@@ -193,5 +233,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 22,
+  },
+  modeToggle: {
+    alignSelf: 'center',
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  modeToggleText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '500',
   },
 });

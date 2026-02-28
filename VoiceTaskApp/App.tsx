@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { initDB } from './src/services/db';
 import { requestPermissions } from './src/services/notificationService';
+import { tryAutoLoad } from './src/services/whisperService';
 import TabNavigator from './src/navigation/TabNavigator';
 
 export default function App() {
@@ -11,7 +12,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([initDB(), requestPermissions()])
+    Promise.all([initDB(), requestPermissions(), tryAutoLoad()])
       .then(() => setReady(true))
       .catch((e) => setError(String(e)));
   }, []);
