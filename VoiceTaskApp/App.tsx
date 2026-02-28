@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { initDB } from './src/services/db';
+import { requestPermissions } from './src/services/notificationService';
 import TabNavigator from './src/navigation/TabNavigator';
 
 export default function App() {
@@ -10,7 +11,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    initDB()
+    Promise.all([initDB(), requestPermissions()])
       .then(() => setReady(true))
       .catch((e) => setError(String(e)));
   }, []);

@@ -7,9 +7,13 @@ import {
   TextInput,
   StyleSheet,
   SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useThoughtsStore } from '../store/useThoughtsStore';
 import { Thought } from '../types';
+import InputBar from '../components/InputBar';
+import DraftBanner from '../components/DraftBanner';
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -18,8 +22,7 @@ function relativeTime(iso: string): string {
   if (min < 60) return `${min}m ago`;
   const hr = Math.floor(min / 60);
   if (hr < 24) return `${hr}h ago`;
-  const day = Math.floor(hr / 24);
-  return `${day}d ago`;
+  return `${Math.floor(hr / 24)}d ago`;
 }
 
 function ThoughtCard({ thought, onDelete }: { thought: Thought; onDelete: () => void }) {
@@ -48,7 +51,7 @@ function ThoughtCard({ thought, onDelete }: { thought: Thought; onDelete: () => 
 }
 
 export default function ThoughtsScreen() {
-  const { thoughts, loadThoughts, searchThoughts, addThought, removeThought } = useThoughtsStore();
+  const { thoughts, loadThoughts, searchThoughts, removeThought } = useThoughtsStore();
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -62,58 +65,76 @@ export default function ThoughtsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Thoughts</Text>
-      </View>
-
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search thoughts..."
-          placeholderTextColor="#475569"
-          value={query}
-          onChangeText={setQuery}
-        />
-      </View>
-
-      {thoughts.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>💭</Text>
-          <Text style={styles.emptyText}>
-            {query ? 'No matching thoughts.' : 'Capture your first thought below.'}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={thoughts}
-          keyExtractor={(t) => t.id}
-          renderItem={({ item }) => (
-            <ThoughtCard
-              thought={item}
-              onDelete={() => removeThought(item.id)}
-            />
-          )}
-          contentContainerStyle={styles.list}
-        />
-      )}
-
-      {/* Placeholder — InputBar replaces this in Phase 3 */}
-      <TouchableOpacity
-        style={styles.addBtn}
-        onPress={() => addThought('Sample thought at ' + new Date().toLocaleTimeString())}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <Text style={styles.addBtnText}>+ Capture Thought (placeholder)</Text>
-      </TouchableOpacity>
+        <DraftBanner />
+
+        <View style={styles.header}>
+          <Text style={styles.title}>Thoughts</Text>
+        </View>
+
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search thoughts…"
+            placeholderTextColor="#475569"
+            value={query}
+            onChangeText={setQuery}
+          />
+          {query.length > 0 && (
+            <TouchableOpacity style={styles.clearBtn} onPress={() => setQuery('')}>
+              <Text style={styles.clearText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {thoughts.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>💭</Text>
+            <Text style={styles.emptyText}>
+              {query ? 'No matching thoughts.' : 'Capture your first thought below.'}
+            </Text>
+            {!query && (
+              <Text style={styles.emptyHint}>Long-press any thought to delete it</Text>
+            )}
+          </View>
+        ) : (
+          <FlatList
+            data={thoughts}
+            keyExtractor={(t) => t.id}
+            renderItem={({ item }) => (
+              <ThoughtCard thought={item} onDelete={() => removeThought(item.id)} />
+            )}
+            contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
+          />
+        )}
+
+        <InputBar
+          defaultCategory="thought"
+          onCreated={() => { if (!query) loadThoughts(); }}
+        />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
+  flex: { flex: 1 },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   title: { fontSize: 28, fontWeight: '700', color: '#f1f5f9' },
-  searchRow: { paddingHorizontal: 16, marginBottom: 8 },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
   searchInput: {
+    flex: 1,
     backgroundColor: '#1e293b',
     borderRadius: 10,
     paddingHorizontal: 14,
@@ -121,7 +142,9 @@ const styles = StyleSheet.create({
     color: '#e2e8f0',
     fontSize: 15,
   },
-  list: { paddingHorizontal: 16 },
+  clearBtn: { marginLeft: 8, padding: 6 },
+  clearText: { color: '#475569', fontSize: 14 },
+  list: { paddingHorizontal: 16, paddingBottom: 8 },
   card: {
     backgroundColor: '#1e293b',
     borderRadius: 12,
@@ -136,12 +159,5 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 16, color: '#475569' },
-  addBtn: {
-    margin: 16,
-    backgroundColor: '#6366f1',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  addBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  emptyHint: { fontSize: 13, color: '#334155', marginTop: 4 },
 });

@@ -6,9 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useTodosStore } from '../store/useTodosStore';
+import { useDraftsStore } from '../store/useDraftsStore';
 import { Todo } from '../types';
+import InputBar from '../components/InputBar';
+import DraftBanner from '../components/DraftBanner';
 
 const PRIORITY_COLORS = {
   high: '#ef4444',
@@ -37,10 +42,12 @@ function TodoRow({ todo }: { todo: Todo }) {
 }
 
 export default function TodayScreen() {
-  const { todos, loadTodos, addTodo } = useTodosStore();
+  const { todos, loadTodos } = useTodosStore();
+  const { loadDraftCount } = useDraftsStore();
 
   useEffect(() => {
     loadTodos();
+    loadDraftCount();
   }, []);
 
   const today = new Date().toLocaleDateString('en-US', {
@@ -49,44 +56,56 @@ export default function TodayScreen() {
     day: 'numeric',
   });
 
+  const done = todos.filter((t) => t.completed).length;
+  const total = todos.length;
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Today</Text>
-        <Text style={styles.subtitle}>{today}</Text>
-      </View>
-
-      {todos.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>✓</Text>
-          <Text style={styles.emptyText}>Nothing yet. Add a task below.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={todos}
-          keyExtractor={(t) => t.id}
-          renderItem={({ item }) => <TodoRow todo={item} />}
-          contentContainerStyle={styles.list}
-        />
-      )}
-
-      {/* Placeholder — InputBar will be added in Phase 3 */}
-      <TouchableOpacity
-        style={styles.addBtn}
-        onPress={() => addTodo('Sample task ' + Date.now(), 'medium')}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <Text style={styles.addBtnText}>+ Add Task (placeholder)</Text>
-      </TouchableOpacity>
+        <DraftBanner />
+
+        <View style={styles.header}>
+          <Text style={styles.title}>Today</Text>
+          <Text style={styles.subtitle}>{today}</Text>
+          {total > 0 && (
+            <Text style={styles.progress}>
+              {done}/{total} done
+            </Text>
+          )}
+        </View>
+
+        {todos.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>✓</Text>
+            <Text style={styles.emptyText}>Nothing yet. Add a task below.</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={todos}
+            keyExtractor={(t) => t.id}
+            renderItem={({ item }) => <TodoRow todo={item} />}
+            contentContainerStyle={styles.list}
+          />
+        )}
+
+        <InputBar defaultCategory="todo" onCreated={() => loadTodos()} />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
+  flex: { flex: 1 },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { fontSize: 28, fontWeight: '700', color: '#f1f5f9' },
   subtitle: { fontSize: 14, color: '#64748b', marginTop: 2 },
-  list: { paddingHorizontal: 16, paddingTop: 8 },
+  progress: { fontSize: 13, color: '#6366f1', marginTop: 4, fontWeight: '600' },
+  list: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -124,12 +143,4 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 16, color: '#475569' },
-  addBtn: {
-    margin: 16,
-    backgroundColor: '#6366f1',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  addBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
 });

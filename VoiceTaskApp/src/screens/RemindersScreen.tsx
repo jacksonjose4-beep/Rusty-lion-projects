@@ -6,13 +6,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRemindersStore } from '../store/useRemindersStore';
+import { cancelNotification } from '../services/notificationService';
 import { Reminder } from '../types';
+import InputBar from '../components/InputBar';
+import DraftBanner from '../components/DraftBanner';
 
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', {
+  return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -20,29 +24,43 @@ function formatDate(iso: string): string {
   });
 }
 
-function groupReminders(reminders: Reminder[]): Record<string, Reminder[]> {
+function groupReminders(reminders: Reminder[]): [string, Reminder[]][] {
   const now = new Date();
-  const today = now.toDateString();
   const weekMs = 7 * 24 * 60 * 60 * 1000;
   const monthMs = 30 * 24 * 60 * 60 * 1000;
 
-  return reminders.reduce<Record<string, Reminder[]>>(
-    (acc, r) => {
-      const d = new Date(r.scheduledAt);
-      let group: string;
-      if (d.toDateString() === today) group = 'Today';
-      else if (d.getTime() - now.getTime() < weekMs) group = 'This Week';
-      else if (d.getTime() - now.getTime() < monthMs) group = 'This Month';
-      else group = 'Later';
-      acc[group] = [...(acc[group] ?? []), r];
-      return acc;
-    },
-    { Today: [], 'This Week': [], 'This Month': [], Later: [] }
-  );
+  const groups: Record<string, Reminder[]> = {
+    Today: [],
+    'This Week': [],
+    'This Month': [],
+    Later: [],
+  };
+
+  for (const r of reminders) {
+    const d = new Date(r.scheduledAt);
+    const diff = d.getTime() - now.getTime();
+    if (d.toDateString() === now.toDateString()) groups['Today'].push(r);
+    else if (diff < weekMs) groups['This Week'].push(r);
+    else if (diff < monthMs) groups['This Month'].push(r);
+    else groups['Later'].push(r);
+  }
+
+  return Object.entries(groups).filter(([, items]) => items.length > 0);
 }
 
 function ReminderCard({ reminder }: { reminder: Reminder }) {
   const { completeReminder, removeReminder } = useRemindersStore();
+
+  const handleComplete = async () => {
+    if (reminder.notificationId) await cancelNotification(reminder.notificationId);
+    completeReminder(reminder.id);
+  };
+
+  const handleDelete = async () => {
+    if (reminder.notificationId) await cancelNotification(reminder.notificationId);
+    removeReminder(reminder.id);
+  };
+
   return (
     <View style={styles.card}>
       <View style={styles.cardBody}>
@@ -55,10 +73,10 @@ function ReminderCard({ reminder }: { reminder: Reminder }) {
         <Text style={styles.cardDate}>{formatDate(reminder.scheduledAt)}</Text>
       </View>
       <View style={styles.cardActions}>
-        <TouchableOpacity onPress={() => completeReminder(reminder.id)} style={styles.actionBtn}>
+        <TouchableOpacity onPress={handleComplete} style={styles.actionBtn}>
           <Text style={styles.checkText}>✓</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => removeReminder(reminder.id)} style={styles.actionBtn}>
+        <TouchableOpacity onPress={handleDelete} style={styles.actionBtn}>
           <Text style={styles.deleteText}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -67,58 +85,62 @@ function ReminderCard({ reminder }: { reminder: Reminder }) {
 }
 
 export default function RemindersScreen() {
-  const { reminders, loadReminders, addReminder } = useRemindersStore();
+  const { reminders, loadReminders } = useRemindersStore();
 
   useEffect(() => {
     loadReminders();
   }, []);
 
-  const groups = groupReminders(reminders);
-  const sections = Object.entries(groups).filter(([, items]) => items.length > 0);
+  const sections = groupReminders(reminders);
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Reminders</Text>
-      </View>
-
-      {reminders.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyIcon}>🔔</Text>
-          <Text style={styles.emptyText}>No reminders yet.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={sections}
-          keyExtractor={([group]) => group}
-          renderItem={({ item: [group, items] }) => (
-            <View>
-              <Text style={styles.sectionHeader}>{group}</Text>
-              {items.map((r) => <ReminderCard key={r.id} reminder={r} />)}
-            </View>
-          )}
-          contentContainerStyle={styles.list}
-        />
-      )}
-
-      {/* Placeholder — InputBar replaces this in Phase 3 */}
-      <TouchableOpacity
-        style={styles.addBtn}
-        onPress={() => {
-          const tomorrow = new Date(Date.now() + 86400000).toISOString();
-          addReminder('Sample reminder', tomorrow);
-        }}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <Text style={styles.addBtnText}>+ Add Reminder (placeholder)</Text>
-      </TouchableOpacity>
+        <DraftBanner />
+
+        <View style={styles.header}>
+          <Text style={styles.title}>Reminders</Text>
+          {reminders.length > 0 && (
+            <Text style={styles.subtitle}>{reminders.length} upcoming</Text>
+          )}
+        </View>
+
+        {reminders.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>🔔</Text>
+            <Text style={styles.emptyText}>No reminders yet.</Text>
+            <Text style={styles.emptyHint}>Type below and tap "Remind"</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={sections}
+            keyExtractor={([group]) => group}
+            renderItem={({ item: [group, items] }) => (
+              <View>
+                <Text style={styles.sectionHeader}>{group}</Text>
+                {items.map((r) => <ReminderCard key={r.id} reminder={r} />)}
+              </View>
+            )}
+            contentContainerStyle={styles.list}
+          />
+        )}
+
+        <InputBar defaultCategory="reminder" onCreated={() => loadReminders()} />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
+  flex: { flex: 1 },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { fontSize: 28, fontWeight: '700', color: '#f1f5f9' },
+  subtitle: { fontSize: 14, color: '#64748b', marginTop: 2 },
   list: { paddingHorizontal: 16 },
   sectionHeader: {
     fontSize: 13,
@@ -156,12 +178,5 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 16, color: '#475569' },
-  addBtn: {
-    margin: 16,
-    backgroundColor: '#6366f1',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  addBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  emptyHint: { fontSize: 13, color: '#334155', marginTop: 4 },
 });
