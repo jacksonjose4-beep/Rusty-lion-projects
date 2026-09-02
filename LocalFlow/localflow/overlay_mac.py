@@ -75,7 +75,10 @@ class LocalFlowOverlayView(NSView):
         self.setNeedsDisplay_(True)
 
     def setEnabledFlag_(self, flag):  # noqa: N802
-        self._enabled = bool(flag)
+        try:
+            self._enabled = bool(flag.boolValue()) if hasattr(flag, "boolValue") else bool(flag)
+        except Exception:
+            self._enabled = True
         self.setNeedsDisplay_(True)
 
     # ---- drawing ----------------------------------------------------------
@@ -83,6 +86,12 @@ class LocalFlowOverlayView(NSView):
         return False
 
     def drawRect_(self, rect):  # noqa: N802
+        try:
+            self._draw()
+        except Exception:
+            log.exception("Widget draw failed")
+
+    def _draw(self) -> None:
         bounds = self.bounds()
         w, h = bounds.size.width, bounds.size.height
         pill = NSBezierPath.bezierPathWithRoundedRect_xRadius_yRadius_(bounds, w / 2, w / 2)
@@ -219,6 +228,16 @@ class OverlayController(NSObject):
 
     # main thread only
     def build_(self, _):  # noqa: N802
+        # An exception here would surface inside AppKit's run loop, so catch
+        # everything: a missing widget must never take the app down.
+        try:
+            self._build()
+        except Exception:
+            log.exception("Floating widget failed to build; continuing without it")
+            self._panel = None
+            self._view = None
+
+    def _build(self) -> None:
         cfg = self._app.cfg
         screen = NSScreen.mainScreen()
         vf = screen.visibleFrame() if screen is not None else None
@@ -274,22 +293,25 @@ class OverlayController(NSObject):
         log.info("Floating widget shown at (%.0f, %.0f)", x, y)
 
     def setVisibleFlag_(self, flag):  # noqa: N802
-        if self._panel is None:
-            return
-        if bool(flag):
-            self._panel.orderFrontRegardless()
-        else:
-            self._panel.orderOut_(None)
+        try:
+            if self._panel is None:
+                return
+            if bool(flag):
+                self._panel.orderFrontRegardless()
+            else:
+                self._panel.orderOut_(None)
+        except Exception:
+            log.exception("Could not toggle the floating widget")
 
     def windowDidMove_(self, notification):  # noqa: N802
-        if self._panel is None:
-            return
-        f = self._panel.frame()
-        self._app.cfg.overlay_position = [float(f.origin.x), float(f.origin.y)]
         try:
+            if self._panel is None:
+                return
+            f = self._panel.frame()
+            self._app.cfg.overlay_position = [float(f.origin.x), float(f.origin.y)]
             self._app.cfg.save()
-        except OSError:
-            pass
+        except Exception:
+            log.debug("Could not save widget position", exc_info=True)
 
     # ---- button handlers (main thread) ----------------------------------
     def _on_mic(self) -> None:
