@@ -20,13 +20,13 @@ from .history import history_path
 log = logging.getLogger(__name__)
 
 HOTKEY_PRESETS = [
-    ("Ctrl + Shift + Space", "<ctrl>+<shift>+<space>"),
-    ("Ctrl + Alt/Option + Space", "<ctrl>+<alt>+<space>"),
     ("Right Alt / Option (hold)", "<alt_r>"),
     ("Right Cmd / Win (hold)", "<cmd_r>"),
     ("Right Ctrl (hold)", "<ctrl_r>"),
+    ("Ctrl + Alt/Option (hold both)", "<ctrl>+<alt>"),
+    ("Ctrl + Shift + Space", "<ctrl>+<shift>+<space>"),
+    ("Ctrl + Alt/Option + Space", "<ctrl>+<alt>+<space>"),
     ("F13", "<f13>"),
-    ("F8", "<f8>"),
     ("Alt/Option + Z", "<alt>+z"),
 ]
 

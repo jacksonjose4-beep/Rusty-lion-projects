@@ -13,7 +13,7 @@ import numpy as np
 from . import cleanup, history, output
 from .audio import Recorder, beep, duration, rms_dbfs
 from .config import Config
-from .hotkeys import HotkeyListener, parse_hotkey
+from .hotkeys import HotkeyListener, modifier_only, parse_hotkey
 from .transcriber import Transcriber
 
 log = logging.getLogger(__name__)
@@ -246,7 +246,14 @@ class App:
                       "Start/Stop recording still works meanwhile.",
                       "macOS has not granted this app Accessibility / Input Monitoring access."
                       if platform.system() == "Darwin" else "")
-        elif platform.system() == "Darwin" and not mac_trusted():
+        elif platform.system() == "Darwin" and not modifier_only(parse_hotkey(self.cfg.hotkey)):
+            holder = mac_secure_input()
+            if holder:
+                log.error("macOS Secure Keyboard Entry is ON (held by %s). Ordinary keys are hidden "
+                          "from every app, so %s cannot work. Either turn it off in that app's "
+                          "menu, or use a modifier-only hotkey: `localflow hotkey \"<alt_r>\"` "
+                          "(right Option, hold to talk).", holder, self.cfg.hotkey)
+        if platform.system() == "Darwin" and not mac_trusted():
             log.warning("macOS reports this app is not an Accessibility client; if the hotkey "
                         "does nothing, run `localflow doctor`.")
         mode = "Hold" if self.cfg.hotkey_mode == "hold" else "Press"
@@ -317,3 +324,32 @@ def mac_input_monitoring() -> bool | None:
         return bool(fn())
     except Exception:
         return None
+
+
+def mac_secure_input() -> str | None:
+    """Name (and pid) of the process holding Secure Keyboard Entry, or None.
+
+    While any app holds it, key-down events are invisible to event taps and
+    only modifier changes get through. Terminal.app and iTerm2 both have a
+    "Secure Keyboard Entry" menu toggle; password prompts and some corporate
+    security tools switch it on too.
+    """
+    import re
+    import subprocess
+
+    try:
+        out = subprocess.run(["ioreg", "-l", "-w", "0"], capture_output=True, text=True,
+                             timeout=10).stdout
+    except Exception:
+        return None
+    match = re.search(r'"kCGSSessionSecureInputPID"\s*=\s*(\d+)', out)
+    if not match:
+        return None
+    pid = match.group(1)
+    try:
+        name = subprocess.run(["ps", "-p", pid, "-o", "comm="], capture_output=True, text=True,
+                              timeout=5).stdout.strip()
+    except Exception:
+        name = ""
+    name = name.rsplit("/", 1)[-1] or "an unknown process"
+    return f"{name} (pid {pid})"

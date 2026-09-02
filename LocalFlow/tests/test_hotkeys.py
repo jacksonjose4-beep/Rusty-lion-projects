@@ -1,6 +1,6 @@
 import pytest
 
-from localflow.hotkeys import ComboTracker, key_name, parse_hotkey
+from localflow.hotkeys import ComboTracker, key_name, modifier_only, parse_hotkey
 
 
 def test_parse_named_and_char_keys():
@@ -60,3 +60,17 @@ def test_key_name_normalisation():
 def test_control_characters_map_back_to_letters():
     assert key_name(FakeKey(char="\x1a")) == "z"   # ctrl+z on macOS/Linux
     assert key_name(FakeKey(char="\x01")) == "a"
+
+
+def test_modifier_only_detection():
+    assert modifier_only(parse_hotkey("<alt_r>"))
+    assert modifier_only(parse_hotkey("<ctrl>+<alt>"))
+    assert not modifier_only(parse_hotkey("<ctrl>+<shift>+<space>"))
+    assert not modifier_only(parse_hotkey("<f13>"))
+
+
+def test_single_modifier_push_to_talk():
+    t = ComboTracker(parse_hotkey("<alt_r>"))
+    assert t.press("alt_r")
+    assert t.release("alt_r")
+    assert not t.press("alt_l")  # left Option must not trigger the right-only combo

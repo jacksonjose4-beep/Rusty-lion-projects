@@ -118,6 +118,12 @@ localflow hotkey "<f13>" --mode toggle
 Names: `<ctrl>`, `<alt>` (Option), `<shift>`, `<cmd>`, `<space>`, `<f1>`
 to `<f20>`, single letters, and `_l` / `_r` variants for one side only.
 The Fn key on Mac keyboards is not visible to apps, so it cannot be used.
+On a Mac, a single right-hand modifier such as `<alt_r>` is the closest
+thing to Wispr's Fn key, and it is also the most robust choice (see
+Secure Keyboard Entry under Troubleshooting).
+
+Type the command on its own line; a trailing `# comment` from the examples
+above would be passed to the command as extra arguments.
 
 Say "new line", "new paragraph", "period", "comma", "question mark" to
 insert them. Everything else is typed as spoken, minus the fillers.
@@ -226,6 +232,18 @@ a fake transcriber, so they run without a microphone or a model download.
   permissions are on and it still fails, also add the Python binary that
   `localflow doctor` prints on its first line to Input Monitoring: press
   the + button, then Cmd+Shift+G, and paste the path.
+* **Doctor shows Ctrl and Shift but never Space** (or any letter key):
+  macOS **Secure Keyboard Entry** is on. While any app holds it, ordinary
+  key presses are hidden from every listener and only modifier keys get
+  through. `localflow doctor` names the app holding it. Either switch it
+  off (Terminal menu > Secure Keyboard Entry, or iTerm2 menu > Secure
+  Keyboard Entry), or, if a corporate tool holds it, pick a modifier-only
+  hotkey, which keeps working regardless:
+
+  ```bash
+  localflow hotkey "<alt_r>"          # right Option, hold to talk
+  localflow hotkey "<ctrl>+<alt>"     # hold both
+  ```
 * **Menu bar icon is missing**: `pip install pystray Pillow` inside the
   venv, or the app fell back to terminal mode and said why in the log.
 * **Text is typed into the wrong place / characters dropped**: try

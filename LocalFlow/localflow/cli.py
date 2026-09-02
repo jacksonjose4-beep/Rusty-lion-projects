@@ -153,8 +153,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     import platform
     import time
 
-    from .app import mac_input_monitoring, mac_trusted
-    from .hotkeys import ComboTracker, HotkeyListener, key_name, parse_hotkey
+    from .app import mac_input_monitoring, mac_secure_input, mac_trusted
+    from .hotkeys import ComboTracker, HotkeyListener, is_modifier, modifier_only, parse_hotkey
 
     cfg = Config.load()
     ok = True
@@ -189,6 +189,23 @@ def cmd_doctor(args: argparse.Namespace) -> int:
                "" if im else f"System Settings > Privacy & Security > Input Monitoring: add {term}. "
                              f"If it is already listed, also add {sys.executable} "
                              "(press Cmd+Shift+G in the file picker and paste that path)")
+        holder = mac_secure_input()
+        combo_mod_only = False
+        try:
+            combo_mod_only = modifier_only(parse_hotkey(cfg.hotkey))
+        except ValueError:
+            pass
+        if holder and not combo_mod_only:
+            report("macOS Secure Keyboard Entry", False,
+                   f"ON, held by {holder}. Ordinary keys like Space are hidden from LocalFlow. "
+                   "Turn it off (Terminal menu > Secure Keyboard Entry, or iTerm2 menu > "
+                   "Secure Keyboard Entry) or switch to a modifier-only hotkey: "
+                   "`localflow hotkey \"<alt_r>\"` (right Option, hold to talk)")
+        elif holder:
+            report("macOS Secure Keyboard Entry", True,
+                   f"ON, held by {holder}, but your hotkey is modifier-only so it still works")
+        else:
+            report("macOS Secure Keyboard Entry", True, "off")
 
     # Microphone
     try:
@@ -272,9 +289,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
                "hotkeys are blocked; use an X11 session")
     else:
         report("Keyboard events received", True, f"{len(seen)} events")
-        report("Hotkey combo detected", fired["on"] > 0,
-               "" if fired["on"] else f"keys seen: {sorted(set(seen))}. Change the hotkey with "
-                                      "`localflow hotkey` or the menu bar icon")
+        only_modifiers_seen = all(is_modifier(k) for k in seen)
+        combo = parse_hotkey(cfg.hotkey)
+        if fired["on"]:
+            report("Hotkey combo detected", True)
+        elif only_modifiers_seen and not modifier_only(combo):
+            report("Hotkey combo detected", False,
+                   "only modifier keys got through; ordinary keys are being hidden (macOS Secure "
+                   "Keyboard Entry, or a password field is focused). Use a modifier-only hotkey: "
+                   "`localflow hotkey \"<alt_r>\"` for right Option, or "
+                   "`localflow hotkey \"<ctrl>+<alt>\"`")
+        else:
+            report("Hotkey combo detected", False,
+                   f"keys seen: {sorted(set(seen))}. Change the hotkey with `localflow hotkey` "
+                   "or the menu bar icon")
     print()
     print("All checks passed. Run `localflow` and dictate." if ok
           else "Fix the FAIL lines above, then run `localflow doctor` again.")

@@ -33,6 +33,21 @@ FAMILIES = {
 for _n in range(1, 21):  # pynput defines f1..f20
     ALIASES[f"f{_n}"] = f"f{_n}"
 
+MODIFIERS = set().union(*FAMILIES.values())
+
+
+def is_modifier(name: str) -> bool:
+    return name in MODIFIERS
+
+
+def modifier_only(keys: list[str]) -> bool:
+    """True if every key in the combo is a modifier (ctrl, alt, shift, cmd).
+
+    Modifier presses reach listeners even when macOS Secure Keyboard Entry
+    hides ordinary key events, so such combos keep working under it.
+    """
+    return all(is_modifier(k) for k in keys)
+
 
 def parse_hotkey(spec: str) -> list[str]:
     """'<ctrl>+<shift>+<space>' -> ['ctrl', 'shift', 'space'].
