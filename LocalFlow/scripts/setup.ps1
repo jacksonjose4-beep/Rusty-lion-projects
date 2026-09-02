@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-    Write-Error "python not found. Install Python 3.10+ from python.org (tick 'Add to PATH')."
+    Write-Error "python not found. Install Python 3.9+ from python.org (tick 'Add to PATH')."
 }
 
 python -m venv .venv

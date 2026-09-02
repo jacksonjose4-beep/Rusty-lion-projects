@@ -39,7 +39,7 @@ hotkey held  ->  mic (16 kHz)  ->  Whisper on CPU/GPU  ->  cleanup  ->  keystrok
 
 ## Install
 
-Requirements: Python 3.10+, a microphone, and roughly 1 GB of disk for the
+Requirements: Python 3.9+, a microphone, and roughly 1 GB of disk for the
 `small` model or 200 MB for `base`.
 
 ### macOS / Linux
