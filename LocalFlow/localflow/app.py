@@ -14,6 +14,7 @@ from . import cleanup, history, output
 from .audio import Recorder, beep, duration, rms_dbfs
 from .config import Config
 from .hotkeys import HotkeyListener, modifier_only, parse_hotkey
+from .notify import notify
 from .transcriber import Transcriber
 
 log = logging.getLogger(__name__)
@@ -222,8 +223,9 @@ class App:
         with self._busy:
             try:
                 self.last_text = self.pipeline.process(audio).strip()
-            except Exception:
+            except Exception as exc:
                 log.exception("Dictation failed")
+                notify("LocalFlow: dictation failed", f"{type(exc).__name__}: {exc}"[:200])
             finally:
                 self._set_state(IDLE if self.enabled else OFF)
 
@@ -262,6 +264,10 @@ class App:
         log.info("Ready. %s %s to dictate. Output mode: %s. Ctrl+C to quit.",
                  mode, self.cfg.hotkey, self.cfg.output_mode)
         self._set_state(IDLE)
+        if self.cfg.tray:
+            notify("LocalFlow is running",
+                   f"{mode} {_pretty_hotkey(self.cfg.hotkey)} to dictate. Look for the mic icon "
+                   "in the menu bar and the widget at the right edge of the screen.")
 
     def wait(self) -> None:
         try:
@@ -286,6 +292,7 @@ class App:
                 from . import tray
             except Exception as exc:  # pystray/Pillow missing, no display, ...
                 log.warning("Tray icon unavailable (%s); running in the terminal only", exc)
+                notify("LocalFlow: no menu bar icon", f"{exc}"[:200])
             else:
                 tray.run(self)
                 return
@@ -368,3 +375,11 @@ def mac_prompt_for_accessibility() -> None:
         AXIsProcessTrustedWithOptions({kAXTrustedCheckOptionPrompt: True})
     except Exception:
         pass
+
+
+def _pretty_hotkey(spec: str) -> str:
+    names = {"ctrl": "Control", "alt": "Option", "alt_r": "right Option", "alt_l": "left Option",
+             "cmd": "Cmd", "cmd_r": "right Cmd", "shift": "Shift", "space": "Space",
+             "ctrl_r": "right Control"}
+    parts = [p.strip("<>") for p in spec.split("+")]
+    return " + ".join(names.get(p, p.upper() if len(p) == 1 else p) for p in parts)

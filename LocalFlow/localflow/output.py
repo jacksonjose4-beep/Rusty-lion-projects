@@ -68,6 +68,20 @@ def paste_text(text: str, restore_clipboard: bool = True) -> None:
 def deliver(text: str, mode: str = "type", type_interval: float = 0.0) -> None:
     if not text:
         return
+    if mode in ("type", "paste") and platform.system() == "Darwin":
+        from .app import mac_trusted
+        from .notify import notify
+
+        if not mac_trusted():
+            copy_to_clipboard(text)
+            log.error("macOS Accessibility permission is missing for this app, so keystrokes "
+                      "are silently dropped. Copied the text to the clipboard instead. Fix: "
+                      "System Settings > Privacy & Security > Accessibility > add LocalFlow "
+                      "(or your terminal), then quit and reopen it.")
+            notify("LocalFlow: text copied, not typed",
+                   "Grant Accessibility to LocalFlow in System Settings, then reopen it. "
+                   "Press Cmd+V to paste this dictation.")
+            return
     if mode == "type":
         type_text(text, interval=type_interval)
     elif mode == "paste":
