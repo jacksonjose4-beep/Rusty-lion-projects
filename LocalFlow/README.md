@@ -36,6 +36,8 @@ hotkey held  ->  mic (16 kHz)  ->  Whisper on CPU/GPU  ->  cleanup  ->  keystrok
   at `127.0.0.1`. Off by default; still on-device when on.
 * **Output**: simulated keystrokes (default), or paste via clipboard, or
   copy only.
+* **Menu bar icon** showing idle / recording / transcribing / paused, with
+  manual start and stop, an on/off switch, and hotkey and output pickers.
 
 ## Install
 
@@ -74,11 +76,48 @@ hotkey is seen but nothing gets typed.
 
 ## Use
 
-1. Run `localflow`. It loads the model (a few seconds) and prints `Ready`.
+1. Run `localflow`. It loads the model (a few seconds), prints `Ready`, and
+   puts a microphone icon in the menu bar (macOS) or system tray (Windows).
 2. Click into any text field.
 3. Hold **Ctrl+Shift+Space**, speak, release. You will hear a short beep on
-   start and stop.
+   start and stop, and the icon turns red while recording and orange while
+   transcribing.
 4. The text appears where your cursor is.
+
+The icon's menu gives you manual control too:
+
+* **Start / Stop recording** without touching the hotkey.
+* **Dictation on** checkbox to pause the whole thing (the icon greys out).
+* **Hotkey** submenu with common combos, single-key push-to-talk options
+  like right Option or right Cmd, and hold vs toggle mode.
+* **Output** submenu to switch between typing, pasting, and clipboard-only.
+* Last dictation, history, config file, and Quit.
+
+Changes made from the menu are saved to the config file and take effect
+immediately.
+
+### Not working? Run the doctor
+
+```bash
+localflow doctor
+```
+
+It checks the macOS permissions, records two seconds from the microphone
+and reports the level, confirms the model is cached, and then echoes every
+key press it can see for eight seconds so you can watch your hotkey fire.
+Each line is either `OK` or `FAIL` with the exact fix.
+
+### Pick your own hotkey
+
+```bash
+localflow hotkey                  # press the combo you want, release, done
+localflow hotkey "<alt_r>"        # or name it: right Option, hold to talk
+localflow hotkey "<f13>" --mode toggle
+```
+
+Names: `<ctrl>`, `<alt>` (Option), `<shift>`, `<cmd>`, `<space>`, `<f1>`
+to `<f20>`, single letters, and `_l` / `_r` variants for one side only.
+The Fn key on Mac keyboards is not visible to apps, so it cannot be used.
 
 Say "new line", "new paragraph", "period", "comma", "question mark" to
 insert them. Everything else is typed as spoken, minus the fillers.
@@ -104,6 +143,8 @@ work for lists and dicts.
 |-----|---------|-------|
 | `hotkey` | `<ctrl>+<shift>+<space>` | Any combo, e.g. `<alt>+z`, `<cmd>+<f13>` |
 | `hotkey_mode` | `hold` | `hold` = push to talk. `toggle` = press to start, press to stop |
+| `enable_hotkey` | `null` | Optional second combo that pauses/resumes dictation, e.g. `<ctrl>+<shift>+<f12>` |
+| `tray` | `true` | Menu bar / tray icon. `localflow --no-tray` for terminal only |
 | `model` | `base` | `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`, or a folder path |
 | `device` | `auto` | `cpu` or `cuda` |
 | `language` | `en` | ISO code, or `null` to auto-detect |
@@ -177,8 +218,16 @@ a fake transcriber, so they run without a microphone or a model download.
 
 ## Troubleshooting
 
-* **Hotkey does nothing on macOS**: Accessibility + Input Monitoring for the
-  terminal app, then restart it.
+* **Hotkey does nothing on macOS**: run `localflow doctor`. Almost always it
+  is one of: the terminal app is not listed under Accessibility *and* Input
+  Monitoring; you added a different app than the one you launched from
+  (Terminal vs iTerm vs VS Code); or you did not quit and reopen the
+  terminal after granting it (Cmd+Q, not just closing the window). If both
+  permissions are on and it still fails, also add the Python binary that
+  `localflow doctor` prints on its first line to Input Monitoring: press
+  the + button, then Cmd+Shift+G, and paste the path.
+* **Menu bar icon is missing**: `pip install pystray Pillow` inside the
+  venv, or the app fell back to terminal mode and said why in the log.
 * **Text is typed into the wrong place / characters dropped**: try
   `output_mode=paste`, or raise `type_interval` to `0.01`.
 * **Windows: works everywhere except one app**: that app is probably running

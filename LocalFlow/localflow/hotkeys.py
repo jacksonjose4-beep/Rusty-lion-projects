@@ -7,6 +7,7 @@ push-to-talk, so this tracks the currently held keys itself.
 from __future__ import annotations
 
 import threading
+import time
 from typing import Callable
 
 # Aliases people are likely to type in config.json -> pynput names.
@@ -64,9 +65,12 @@ def key_name(key) -> str | None:  # noqa: ANN001
         return name
     char = getattr(key, "char", None)
     if char:
+        code = ord(char)
+        if 1 <= code <= 26:  # ctrl held: macOS/Linux report control chars
+            return chr(code + 96)
         return char.lower()
     vk = getattr(key, "vk", None)
-    if vk is not None and 0x30 <= vk <= 0x5A:  # 0-9, A-Z with a modifier held
+    if vk is not None and 0x30 <= vk <= 0x5A:  # Windows: 0-9, A-Z with a modifier held
         return chr(vk).lower()
     return None
 
@@ -119,16 +123,27 @@ class HotkeyListener:
         self.on_deactivate = on_deactivate
         self._listener = None
         self._lock = threading.Lock()
+        self.alive = False
+
+    def _name(self, key) -> str | None:  # noqa: ANN001
+        # canonical() strips modifier effects, so shift+a and ctrl+a both read as "a".
+        listener = self._listener
+        if listener is not None:
+            try:
+                key = listener.canonical(key)
+            except Exception:
+                pass
+        return key_name(key)
 
     def _on_press(self, key) -> None:  # noqa: ANN001
         with self._lock:
-            fire = self.tracker.press(key_name(key))
+            fire = self.tracker.press(self._name(key))
         if fire:
             self.on_activate()
 
     def _on_release(self, key) -> None:  # noqa: ANN001
         with self._lock:
-            fire = self.tracker.release(key_name(key))
+            fire = self.tracker.release(self._name(key))
         if fire:
             self.on_deactivate()
 
@@ -138,6 +153,10 @@ class HotkeyListener:
         self._listener = keyboard.Listener(on_press=self._on_press, on_release=self._on_release)
         self._listener.daemon = True
         self._listener.start()
+        # On macOS without Accessibility access the listener thread just exits,
+        # so give it a moment and then check whether it is still alive.
+        time.sleep(0.3)
+        self.alive = self._listener.is_alive()
 
     def stop(self) -> None:
         if self._listener is not None:

@@ -55,3 +55,8 @@ def test_key_name_normalisation():
     assert key_name(FakeKey(char="Z")) == "z"
     assert key_name(FakeKey(vk=0x5A)) == "z"   # ctrl held, char is None on Windows
     assert key_name(FakeKey()) is None
+
+
+def test_control_characters_map_back_to_letters():
+    assert key_name(FakeKey(char="\x1a")) == "z"   # ctrl+z on macOS/Linux
+    assert key_name(FakeKey(char="\x01")) == "a"

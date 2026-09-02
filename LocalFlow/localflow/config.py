@@ -24,6 +24,10 @@ class Config:
     hotkey: str = "<ctrl>+<shift>+<space>"
     # "hold" (push to talk) or "toggle" (press once to start, again to stop).
     hotkey_mode: str = "hold"
+    # Optional second hotkey that switches dictation on/off entirely.
+    enable_hotkey: str | None = None
+    # Show a menu bar / system tray icon with status and controls.
+    tray: bool = True
 
     # Whisper model: tiny, base, small, medium, large-v3, distil-large-v3, ...
     model: str = "base"
