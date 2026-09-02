@@ -23,6 +23,7 @@ HOTKEY_PRESETS = [
     ("Right Alt / Option (hold)", "<alt_r>"),
     ("Right Cmd / Win (hold)", "<cmd_r>"),
     ("Right Ctrl (hold)", "<ctrl_r>"),
+    ("Ctrl + Shift (hold both)", "<ctrl>+<shift>"),
     ("Ctrl + Alt/Option (hold both)", "<ctrl>+<alt>"),
     ("Ctrl + Shift + Space", "<ctrl>+<shift>+<space>"),
     ("Ctrl + Alt/Option + Space", "<ctrl>+<alt>+<space>"),
