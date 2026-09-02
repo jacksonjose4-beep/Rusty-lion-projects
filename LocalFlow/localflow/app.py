@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import platform
 import threading
 import time
 from typing import Callable
@@ -156,6 +157,10 @@ class App:
         self.pipeline.transcriber.load()
         listener = HotkeyListener(self.cfg.hotkey, self._on_activate, self._on_deactivate)
         listener.start()
+        if platform.system() == "Darwin" and not _mac_trusted():
+            log.warning("macOS has not granted this terminal Accessibility access, so the hotkey "
+                        "will not work yet. System Settings > Privacy & Security > Accessibility "
+                        "(and Input Monitoring): add your terminal app, then quit and reopen it.")
         mode = "hold" if self.cfg.hotkey_mode == "hold" else "press to start, press again to stop"
         log.info("Ready. %s %s to dictate. Output mode: %s. Ctrl+C to quit.",
                  mode.capitalize(), self.cfg.hotkey, self.cfg.output_mode)
@@ -172,3 +177,17 @@ class App:
 
     def stop(self) -> None:
         self._stop.set()
+
+
+def _mac_trusted() -> bool:
+    """True if macOS lists this process as an Accessibility client."""
+    try:
+        import ctypes
+
+        lib = ctypes.cdll.LoadLibrary(
+            "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices"
+        )
+        lib.AXIsProcessTrusted.restype = ctypes.c_bool
+        return bool(lib.AXIsProcessTrusted())
+    except Exception:
+        return True  # cannot tell; do not nag

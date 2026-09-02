@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import sys
+import warnings
 from dataclasses import asdict
 
 from . import __version__
@@ -19,8 +20,12 @@ def _setup_logging(verbose: bool) -> None:
         datefmt="%H:%M:%S",
     )
     if not verbose:
-        for noisy in ("faster_whisper", "urllib3", "httpx", "huggingface_hub"):
+        for noisy in ("faster_whisper", "urllib3", "httpx"):
             logging.getLogger(noisy).setLevel(logging.WARNING)
+        # "You are sending unauthenticated requests to the HF Hub" is noise
+        # during the one-time model download; there is no account to log into.
+        logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+        warnings.filterwarnings("ignore", message=".*unauthenticated requests.*")
 
 
 def _apply_overrides(cfg: Config, args: argparse.Namespace) -> None:
