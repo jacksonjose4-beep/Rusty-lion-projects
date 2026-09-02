@@ -138,14 +138,20 @@ Settings > Privacy & Security*:
 | Accessibility | type into other apps | mic works, nothing appears; text goes to the clipboard instead |
 | Input Monitoring | see the hotkey | hotkey does nothing |
 
-The app asks for Microphone and Accessibility on first launch. If a prompt
-never appeared, or you dismissed it, add the app by hand: open the setting,
+The app asks for Microphone and Accessibility on first launch; approve
+both. Input Monitoring usually needs adding by hand: open that setting,
 press **+**, press **Cmd+Shift+G**, paste `~/Applications/LocalFlow.app`,
-and make sure the toggle is on. Then quit LocalFlow from the menu bar icon
-and open it again. `localflow doctor` reports all three.
+and make sure the toggle is on. (The Microphone pane has no + button; an app
+appears there only after macOS has shown its prompt, which is why the bundle
+embeds the Python interpreter as its main executable rather than a shell
+script: macOS credits the prompt to LocalFlow.app.) After granting, quit
+LocalFlow from the menu bar icon and open it again. `localflow doctor`
+reports all three.
 
-The app is a thin launcher for the virtualenv in this folder, so `git pull`
-updates it in place; rebuild only if you move the folder.
+The bundle's executable is a copy of your virtualenv's interpreter and its
+`lib` folder is a symlink into `.venv`, so `git pull` updates the app in
+place. Rebuild with `make_mac_app.sh` if you move the folder or recreate
+the virtualenv.
 
 To start it at login: *System Settings > General > Login Items*, press +,
 pick LocalFlow.
