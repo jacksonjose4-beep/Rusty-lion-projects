@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "localflow"
+version = "0.1.0"
+description = "Fully offline push-to-talk voice dictation for the desktop"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "faster-whisper>=1.1.0",
+    "numpy>=1.24",
+    "sounddevice>=0.4.6",
+    "pynput>=1.7.6",
+    "pyperclip>=1.8.2",
+    "pystray>=0.19",
+    "Pillow>=9",
+    "pyobjc-framework-AVFoundation>=9; sys_platform == 'darwin'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+localflow = "localflow.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["localflow*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
