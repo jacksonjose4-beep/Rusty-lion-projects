@@ -15,6 +15,12 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
+# Finder may launch a script-based bundle under Rosetta (x86_64) even on an
+# Apple Silicon Mac, and then the arm64 wheels in the venv cannot load. Detect
+# the architecture the venv actually runs as and pin the launcher to it.
+ARCH="$("$PY" -c 'import platform; print(platform.machine())')"
+echo "Virtualenv architecture: $ARCH"
+
 APP="${1:-$HOME/Applications/LocalFlow.app}"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -25,11 +31,18 @@ cat > "$APP/Contents/MacOS/LocalFlow" <<LAUNCHER
 mkdir -p "\$HOME/.localflow"
 echo "=== \$(date) launching LocalFlow.app with $PY" >> "\$HOME/.localflow/launch.log"
 cd "$ROOT"
-exec "$PY" -m localflow run >> "\$HOME/.localflow/launch.log" 2>&1
+exec /usr/bin/arch -$ARCH "$PY" -m localflow run >> "\$HOME/.localflow/launch.log" 2>&1
 LAUNCHER
 chmod +x "$APP/Contents/MacOS/LocalFlow"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+if [[ "$ARCH" == "arm64" ]]; then
+  ARCH_KEYS='  <key>LSArchitecturePriority</key><array><string>arm64</string></array>
+  <key>LSRequiresNativeExecution</key><true/>'
+else
+  ARCH_KEYS='  <key>LSArchitecturePriority</key><array><string>x86_64</string></array>'
+fi
+
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -45,6 +58,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
+$ARCH_KEYS
   <key>NSMicrophoneUsageDescription</key>
   <string>LocalFlow listens to your voice and transcribes it on this Mac. Audio never leaves the computer.</string>
 </dict>
