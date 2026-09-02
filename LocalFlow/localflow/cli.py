@@ -168,7 +168,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     import platform
     import time
 
-    from .app import mac_input_monitoring, mac_secure_input, mac_trusted
+    from .app import MIC_STATUS, mac_input_monitoring, mac_microphone_status, mac_secure_input, mac_trusted
     from .hotkeys import ComboTracker, HotkeyListener, is_modifier, modifier_only, parse_hotkey
 
     cfg = Config.load()
@@ -204,6 +204,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
                "" if im else f"System Settings > Privacy & Security > Input Monitoring: add {term}. "
                              f"If it is already listed, also add {sys.executable} "
                              "(press Cmd+Shift+G in the file picker and paste that path)")
+        mic_status = mac_microphone_status()
+        if mic_status is not None:
+            report("macOS Microphone permission", mic_status == 3,
+                   MIC_STATUS.get(mic_status, str(mic_status)) + ("" if mic_status == 3 else
+                   f". System Settings > Privacy & Security > Microphone > enable {term}"))
         holder = mac_secure_input()
         combo_mod_only = False
         try:

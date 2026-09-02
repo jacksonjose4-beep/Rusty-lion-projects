@@ -236,6 +236,7 @@ class App:
         self._set_state(LOADING)
         if platform.system() == "Darwin":
             mac_prompt_for_accessibility()
+            mac_request_microphone()
         log.info("Loading model (first run downloads it, later runs are instant)...")
         self.pipeline.transcriber.load()
         self._listener = HotkeyListener(self.cfg.hotkey, self._on_activate, self._on_deactivate)
@@ -383,3 +384,50 @@ def _pretty_hotkey(spec: str) -> str:
              "ctrl_r": "right Control"}
     parts = [p.strip("<>") for p in spec.split("+")]
     return " + ".join(names.get(p, p.upper() if len(p) == 1 else p) for p in parts)
+
+
+MIC_STATUS = {0: "not yet asked", 1: "restricted", 2: "denied", 3: "authorized"}
+
+
+def mac_microphone_status() -> int | None:
+    """AVFoundation authorization status for the microphone, or None if unknown."""
+    try:
+        from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
+
+        return int(AVCaptureDevice.authorizationStatusForMediaType_(AVMediaTypeAudio))
+    except Exception:
+        return None
+
+
+def mac_request_microphone() -> None:
+    """Trigger the macOS microphone prompt for this app if it has not been asked yet.
+
+    Without permission CoreAudio hands the app pure silence rather than an
+    error, which shows up in the log as -inf dBFS recordings.
+    """
+    status = mac_microphone_status()
+    if status is None:
+        return
+    if status == 3:
+        return
+    if status == 0:
+        try:
+            from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
+
+            def done(granted: bool) -> None:
+                log.info("Microphone permission %s", "granted" if granted else "denied")
+                if not granted:
+                    notify("LocalFlow: microphone blocked",
+                           "System Settings > Privacy & Security > Microphone > enable LocalFlow, "
+                           "then reopen the app.")
+
+            AVCaptureDevice.requestAccessForMediaType_completionHandler_(AVMediaTypeAudio, done)
+            log.info("Asked macOS for microphone access; approve the prompt.")
+        except Exception:
+            log.debug("Could not request microphone access", exc_info=True)
+        return
+    log.error("Microphone access is %s for this app, so recordings will be silent. Fix: "
+              "System Settings > Privacy & Security > Microphone > enable LocalFlow, then "
+              "quit and reopen it.", MIC_STATUS.get(status, status))
+    notify("LocalFlow: microphone blocked",
+           "System Settings > Privacy & Security > Microphone > enable LocalFlow, then reopen it.")

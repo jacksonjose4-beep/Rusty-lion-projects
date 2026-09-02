@@ -17,6 +17,7 @@ dependencies = [
     "pyperclip>=1.8.2",
     "pystray>=0.19",
     "Pillow>=9",
+    "pyobjc-framework-AVFoundation>=9; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]

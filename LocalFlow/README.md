@@ -125,12 +125,27 @@ bash scripts/make_mac_app.sh
 
 This writes `~/Applications/LocalFlow.app`. Open it from Finder or
 Spotlight. There is no Dock icon and no window: look for the mic in the menu
-bar and the floating widget at the right edge. The first launch asks for
-Microphone and Accessibility; approve both, then also add LocalFlow under
-*System Settings > Privacy & Security > Input Monitoring*, quit it from the
-menu bar icon and open it again. The app is a thin launcher for the
-virtualenv in this folder, so `git pull` updates it in place; rebuild only
-if you move the folder.
+bar, the floating widget at the right edge, and a "LocalFlow is running"
+notification.
+
+**Permissions.** LocalFlow.app is its own program, so the permissions you
+gave Terminal do not carry over. It needs three entries, all under *System
+Settings > Privacy & Security*:
+
+| Setting | Why | Symptom when missing |
+|---------|-----|----------------------|
+| Microphone | record audio | recordings are silent (`-inf dBFS` in the log) |
+| Accessibility | type into other apps | mic works, nothing appears; text goes to the clipboard instead |
+| Input Monitoring | see the hotkey | hotkey does nothing |
+
+The app asks for Microphone and Accessibility on first launch. If a prompt
+never appeared, or you dismissed it, add the app by hand: open the setting,
+press **+**, press **Cmd+Shift+G**, paste `~/Applications/LocalFlow.app`,
+and make sure the toggle is on. Then quit LocalFlow from the menu bar icon
+and open it again. `localflow doctor` reports all three.
+
+The app is a thin launcher for the virtualenv in this folder, so `git pull`
+updates it in place; rebuild only if you move the folder.
 
 To start it at login: *System Settings > General > Login Items*, press +,
 pick LocalFlow.

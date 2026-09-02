@@ -91,6 +91,7 @@ class LocalFlowOverlayView(NSView):
         except Exception:
             log.exception("Widget draw failed")
 
+    @objc.python_method
     def _draw(self) -> None:
         bounds = self.bounds()
         w, h = bounds.size.width, bounds.size.height
@@ -106,6 +107,7 @@ class LocalFlowOverlayView(NSView):
             else:
                 self._draw_notes(b)
 
+    @objc.python_method
     def _circle(self, b, color, fill=True, width=2.0):  # noqa: ANN001
         path = NSBezierPath.bezierPathWithOvalInRect_(
             NSMakeRect(b.cx - b.r, b.cy - b.r, 2 * b.r, 2 * b.r))
@@ -117,6 +119,7 @@ class LocalFlowOverlayView(NSView):
             path.setLineWidth_(width)
             path.stroke()
 
+    @objc.python_method
     def _draw_mic(self, b):  # noqa: ANN001
         r, g, bl = STATE_COLORS.get(self._state, STATE_COLORS["idle"])
         if not self._enabled and self._state in ("idle", "off"):
@@ -157,6 +160,7 @@ class LocalFlowOverlayView(NSView):
             _rgba(1, 1, 1, 0.8).setStroke()
             slash.stroke()
 
+    @objc.python_method
     def _draw_power(self, b):  # noqa: ANN001
         self._circle(b, _rgba(0.0, 0.0, 0.0, 1.0))
         ring = geo.Button("ring", b.cx, b.cy, 8.5)
@@ -164,6 +168,7 @@ class LocalFlowOverlayView(NSView):
         if self._enabled:
             self._circle(geo.Button("dot", b.cx, b.cy, 4.5), _rgba(1, 1, 1, 0.95))
 
+    @objc.python_method
     def _draw_notes(self, b):  # noqa: ANN001
         self._circle(b, _rgba(0.0, 0.0, 0.0, 1.0))
         white = _rgba(1, 1, 1, 0.95)
@@ -237,6 +242,7 @@ class OverlayController(NSObject):
             self._panel = None
             self._view = None
 
+    @objc.python_method
     def _build(self) -> None:
         cfg = self._app.cfg
         screen = NSScreen.mainScreen()
@@ -314,6 +320,7 @@ class OverlayController(NSObject):
             log.debug("Could not save widget position", exc_info=True)
 
     # ---- button handlers (main thread) ----------------------------------
+    @objc.python_method
     def _on_mic(self) -> None:
         app = self._app
         if app.state == "recording":
@@ -323,9 +330,11 @@ class OverlayController(NSObject):
                 app.set_enabled(True)
             app.start_recording()
 
+    @objc.python_method
     def _on_power(self) -> None:
         self._app.toggle_enabled()
 
+    @objc.python_method
     def _on_notes(self) -> None:
         from .history import history_path
         from .tray import _open_path
@@ -337,6 +346,7 @@ class OverlayController(NSObject):
         _open_path(path)
 
     # ---- thread-safe public API -------------------------------------------
+    @objc.python_method
     def set_state(self, state: str) -> None:
         if self._view is not None:
             self._view.performSelectorOnMainThread_withObject_waitUntilDone_(
@@ -344,6 +354,7 @@ class OverlayController(NSObject):
             self._view.performSelectorOnMainThread_withObject_waitUntilDone_(
                 "setEnabledFlag:", self._app.enabled, False)
 
+    @objc.python_method
     def set_visible(self, visible: bool) -> None:
         self.performSelectorOnMainThread_withObject_waitUntilDone_(
             "setVisibleFlag:", bool(visible), False)
