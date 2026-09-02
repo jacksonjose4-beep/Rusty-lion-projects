@@ -17,6 +17,12 @@ if os.environ.get("LOCALFLOW_APP_LAUNCH") == "1":
     import runpy
     import traceback
 
+    # Never let a child Python process (anything the app spawns) see the
+    # trigger again, or it would start a second copy of the app.
+    os.environ.pop("LOCALFLOW_APP_LAUNCH", None)
+    os.environ.pop("PYTHONPATH", None)
+    sys.path[:] = [p for p in sys.path if not p.rstrip("/").endswith("launcher")]
+
     log_dir = os.path.join(os.path.expanduser("~"), ".localflow")
     os.makedirs(log_dir, exist_ok=True)
     log_path = os.path.join(log_dir, "launch.log")

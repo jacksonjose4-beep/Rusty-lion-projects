@@ -288,6 +288,22 @@ class App:
 
     def run(self) -> None:
         """Console mode, or tray mode if configured and available."""
+        from .instance import InstanceLock, read_pid
+
+        lock = InstanceLock()
+        if not lock.acquire():
+            other = read_pid()
+            log.error("LocalFlow is already running (pid %s). Quit it from the menu bar icon or "
+                      "run `localflow stop`.", other)
+            notify("LocalFlow is already running", "Use the copy in the menu bar, or run "
+                   "`localflow stop` in a terminal to close all copies.")
+            return
+        try:
+            self._run()
+        finally:
+            lock.release()
+
+    def _run(self) -> None:
         if self.cfg.tray:
             try:
                 from . import tray

@@ -397,6 +397,17 @@ def cmd_hotkey(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_stop(args: argparse.Namespace) -> int:
+    from .instance import stop_running
+
+    pids = stop_running()
+    if pids:
+        print("Stopped LocalFlow process(es): " + ", ".join(map(str, pids)))
+    else:
+        print("No running LocalFlow found.")
+    return 0
+
+
 def cmd_history(args: argparse.Namespace) -> int:
     from .history import history_path, recent
 
@@ -466,6 +477,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_hk.add_argument("--mode", choices=["hold", "toggle"])
     p_hk.set_defaults(func=cmd_hotkey)
 
+    p_stop = sub.add_parser("stop", help="Quit every running copy of LocalFlow")
+    p_stop.set_defaults(func=cmd_stop)
+
     p_hist = sub.add_parser("history", help="Show recent dictations")
     p_hist.add_argument("--limit", type=int, default=20)
     p_hist.set_defaults(func=cmd_history)
@@ -476,7 +490,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     argv = list(sys.argv[1:] if argv is None else argv)
-    commands = {"run", "init", "config", "devices", "test-mic", "transcribe", "history", "doctor", "hotkey"}
+    commands = {"run", "init", "config", "devices", "test-mic", "transcribe", "history", "doctor", "hotkey", "stop"}
     if not (set(argv) & (commands | {"-h", "--help", "--version"})):
         # Bare `localflow [--model small ...]` means `localflow run ...`.
         argv = ["run"] + argv
