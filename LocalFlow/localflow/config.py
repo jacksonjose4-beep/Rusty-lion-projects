@@ -28,6 +28,10 @@ class Config:
     enable_hotkey: str | None = None
     # Show a menu bar / system tray icon with status and controls.
     tray: bool = True
+    # Floating on-screen widget (mic / on-off / history). macOS for now.
+    overlay: bool = True
+    # Saved widget position [x, y]; set automatically when you drag it.
+    overlay_position: list[float] | None = None
 
     # Whisper model: tiny, base, small, medium, large-v3, distil-large-v3, ...
     model: str = "base"

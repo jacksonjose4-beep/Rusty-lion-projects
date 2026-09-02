@@ -93,14 +93,29 @@ def run(app) -> None:  # noqa: ANN001
 
     icon = pystray.Icon("LocalFlow", make_icon("loading"), "LocalFlow")
 
+    overlay = {"ctl": None, "visible": app.cfg.overlay}
+
     def refresh(state: str) -> None:
         icon.icon = make_icon(state)
         hk = app.cfg.hotkey
         icon.title = f"LocalFlow: {STATUS_TEXT.get(state, state)}  [{hk}]"
+        if overlay["ctl"] is not None:
+            overlay["ctl"].set_state(state)
         try:
             icon.update_menu()
         except Exception:
             pass
+
+    def toggle_overlay(icon, item) -> None:  # noqa: ANN001
+        overlay["visible"] = not overlay["visible"]
+        app.cfg.overlay = overlay["visible"]
+        app.cfg.save()
+        if overlay["ctl"] is None and overlay["visible"]:
+            from . import overlay as overlay_mod
+
+            overlay["ctl"] = overlay_mod.create(app)
+        elif overlay["ctl"] is not None:
+            overlay["ctl"].set_visible(overlay["visible"])
 
     app.on_state = refresh
 
@@ -183,6 +198,7 @@ def run(app) -> None:  # noqa: ANN001
         Menu.SEPARATOR,
         Item(record_text, toggle_record, default=True),
         Item("Dictation on", toggle_enabled, checked=lambda item: app.enabled),
+        Item("Floating widget", toggle_overlay, checked=lambda item: overlay["visible"]),
         Menu.SEPARATOR,
         Item("Hotkey", Menu(*hotkey_items)),
         Item("Output", Menu(*output_items)),
@@ -196,6 +212,10 @@ def run(app) -> None:  # noqa: ANN001
 
     def background(icon) -> None:  # noqa: ANN001
         icon.visible = True
+        if app.cfg.overlay:
+            from . import overlay as overlay_mod
+
+            overlay["ctl"] = overlay_mod.create(app)
         try:
             app.start()
         except Exception:

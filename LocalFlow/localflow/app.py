@@ -232,6 +232,8 @@ class App:
     def start(self) -> None:
         """Load the model and register hotkeys. Returns once ready."""
         self._set_state(LOADING)
+        if platform.system() == "Darwin":
+            mac_prompt_for_accessibility()
         log.info("Loading model (first run downloads it, later runs are instant)...")
         self.pipeline.transcriber.load()
         self._listener = HotkeyListener(self.cfg.hotkey, self._on_activate, self._on_deactivate)
@@ -353,3 +355,16 @@ def mac_secure_input() -> str | None:
         name = ""
     name = name.rsplit("/", 1)[-1] or "an unknown process"
     return f"{name} (pid {pid})"
+
+
+def mac_prompt_for_accessibility() -> None:
+    """Ask macOS to show its 'wants to control this computer' dialog if needed.
+
+    Only shows once per app; afterwards macOS just returns the current state.
+    """
+    try:
+        from ApplicationServices import AXIsProcessTrustedWithOptions, kAXTrustedCheckOptionPrompt
+
+        AXIsProcessTrustedWithOptions({kAXTrustedCheckOptionPrompt: True})
+    except Exception:
+        pass

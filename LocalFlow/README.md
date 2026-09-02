@@ -96,6 +96,56 @@ The icon's menu gives you manual control too:
 Changes made from the menu are saved to the config file and take effect
 immediately.
 
+### The floating widget
+
+On macOS a small dark pill floats at the right edge of the screen, above
+every other window, with three buttons:
+
+* **Mic** (top): click to start recording, click again to stop. It turns red
+  while recording and orange while transcribing.
+* **Dot** (middle): dictation on or off. The mic dims with a slash when off.
+* **Note** (bottom): opens your dictation history.
+
+Drag it anywhere; the position is remembered. Clicking it never steals
+focus, so the text still lands in the app you were typing in. Hide or show
+it from the menu bar icon ("Floating widget"), or start with
+`localflow --no-overlay`. It is macOS-only for now; Windows and Linux get
+the tray icon.
+
+## Run it like a normal app
+
+You do not need a terminal after the first setup.
+
+### macOS: build LocalFlow.app
+
+```bash
+cd LocalFlow
+bash scripts/make_mac_app.sh
+```
+
+This writes `~/Applications/LocalFlow.app`. Open it from Finder or
+Spotlight. There is no Dock icon and no window: look for the mic in the menu
+bar and the floating widget at the right edge. The first launch asks for
+Microphone and Accessibility; approve both, then also add LocalFlow under
+*System Settings > Privacy & Security > Input Monitoring*, quit it from the
+menu bar icon and open it again. The app is a thin launcher for the
+virtualenv in this folder, so `git pull` updates it in place; rebuild only
+if you move the folder.
+
+To start it at login: *System Settings > General > Login Items*, press +,
+pick LocalFlow.
+
+Logs go to `~/.localflow/localflow.log`.
+
+### Windows: Start Menu shortcut
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\make_windows_shortcut.ps1
+```
+
+Creates Start Menu and Desktop shortcuts that launch LocalFlow with no
+console window. Copy the shortcut into `shell:startup` to run at login.
+
 ### Not working? Run the doctor
 
 ```bash
@@ -151,6 +201,7 @@ work for lists and dicts.
 | `hotkey_mode` | `hold` | `hold` = push to talk. `toggle` = press to start, press to stop |
 | `enable_hotkey` | `null` | Optional second combo that pauses/resumes dictation, e.g. `<ctrl>+<shift>+<f12>` |
 | `tray` | `true` | Menu bar / tray icon. `localflow --no-tray` for terminal only |
+| `overlay` | `true` | Floating on-screen widget (macOS). `localflow --no-overlay` to hide |
 | `model` | `base` | `tiny`, `base`, `small`, `medium`, `large-v3`, `distil-large-v3`, or a folder path |
 | `device` | `auto` | `cpu` or `cuda` |
 | `language` | `en` | ISO code, or `null` to auto-detect |

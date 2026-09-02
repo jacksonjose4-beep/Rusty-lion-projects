@@ -15,11 +15,24 @@ from .config import Config, config_path
 
 
 def _setup_logging(verbose: bool) -> None:
-    logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.INFO,
-        format="%(asctime)s %(levelname)-7s %(message)s",
-        datefmt="%H:%M:%S",
-    )
+    fmt = logging.Formatter("%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG if verbose else logging.INFO)
+    console = logging.StreamHandler()
+    console.setFormatter(fmt)
+    root.addHandler(console)
+    try:
+        from logging.handlers import RotatingFileHandler
+
+        from .config import config_dir
+
+        config_dir().mkdir(parents=True, exist_ok=True)
+        fh = RotatingFileHandler(config_dir() / "localflow.log", maxBytes=1_000_000, backupCount=2,
+                                 encoding="utf-8")
+        fh.setFormatter(fmt)
+        root.addHandler(fh)
+    except OSError:
+        pass
     if not verbose:
         for noisy in ("faster_whisper", "urllib3", "httpx"):
             logging.getLogger(noisy).setLevel(logging.WARNING)
@@ -40,6 +53,8 @@ def _apply_overrides(cfg: Config, args: argparse.Namespace) -> None:
         cfg.sounds = False
     if getattr(args, "no_tray", False):
         cfg.tray = False
+    if getattr(args, "no_overlay", False):
+        cfg.overlay = False
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -407,6 +422,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--no-sounds", dest="no_sounds", action="store_true")
         p.add_argument("--no-tray", dest="no_tray", action="store_true",
                        help="Run in the terminal only, without the menu bar icon")
+        p.add_argument("--no-overlay", dest="no_overlay", action="store_true",
+                       help="Do not show the floating on-screen widget")
 
     p_run = sub.add_parser("run", help="Start dictation (default command)")
     add_overrides(p_run)
